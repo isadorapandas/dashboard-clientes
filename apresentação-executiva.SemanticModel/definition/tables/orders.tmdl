@@ -1,0 +1,131 @@
+table orders
+	lineageTag: b47b46ed-ca3e-4f30-a708-151e99fc7ff2
+
+	measure media_reviews = AVERAGE(orders[review_score])
+		lineageTag: ebd81ff2-d6f6-4e48-82d2-51e28f7f958b
+		dataCategory: Uncategorized
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure insatisfeito = CALCULATE(COUNTROWS('orders'), 'orders'[satisfacao] = "Insatisfeito")/30
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: cc4865a3-7ffb-4742-96b9-da0a18f27d80
+
+	measure satisfeito = CALCULATE(COUNTROWS('orders'), 'orders'[satisfacao] = "Satisfeito")/30
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: 121e4c06-50ff-4f9b-ab4d-ee1ada26570b
+
+	measure neutro = CALCULATE(COUNTROWS('orders'), 'orders'[satisfacao] = "Neutro")/30
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: fcae83a3-f881-47ac-9c73-8df744d2b422
+
+	column order_id
+		dataType: int64
+		formatString: 0
+		lineageTag: 32bd7296-5066-478e-8c4a-ebde569f6052
+		summarizeBy: sum
+		sourceColumn: order_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column status
+		dataType: string
+		lineageTag: 38e43bca-13e0-4c71-8ccb-3fcf06e4f692
+		summarizeBy: none
+		sourceColumn: status
+
+		annotation SummarizationSetBy = Automatic
+
+	column purchase_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 2657a8a5-17dd-4606-ace3-1b2f166d15a8
+		summarizeBy: none
+		sourceColumn: purchase_date
+
+		variation Variation
+			isDefault
+			relationship: 35f9b243-5af7-4edd-bef1-44a2e3f4a53e
+			defaultHierarchy: LocalDateTable_92342f3f-c5c0-4979-bf68-6bf1ed44de97.'Hierarquia de datas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column delivered_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 1a50ec36-6c9b-4648-9284-038c6ea34b61
+		summarizeBy: none
+		sourceColumn: delivered_date
+
+		variation Variation
+			isDefault
+			relationship: 4346d0ec-8635-4d0a-bdfd-a33e567b1026
+			defaultHierarchy: LocalDateTable_c201e045-d640-4fc9-aeed-05f82f5f02b3.'Hierarquia de datas'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column freight_value
+		dataType: int64
+		formatString: 0
+		lineageTag: 03a4b800-1a2c-4d54-b85d-5a1bfc54cc65
+		summarizeBy: sum
+		sourceColumn: freight_value
+
+		annotation SummarizationSetBy = Automatic
+
+	column review_score
+		dataType: int64
+		formatString: 0
+		lineageTag: c96c0d41-6902-4219-9a0f-360c85ae53d9
+		summarizeBy: sum
+		sourceColumn: review_score
+
+		annotation SummarizationSetBy = Automatic
+
+	column dias_entrega = DATEDIFF(orders[purchase_date].[Date],orders[delivered_date].[Date],DAY)
+		formatString: 0
+		lineageTag: 6fcd403f-fd3d-4651-8e29-acc19b0b20f2
+		summarizeBy: sum
+
+		annotation SummarizationSetBy = Automatic
+
+	column categoria_entrega =
+			IF(orders[dias_entrega] <= 3, "Rápido",
+			IF(orders[dias_entrega] >= 4 && orders[dias_entrega] <= 7, "Moderado", "Lento"))
+		lineageTag: 983a2da2-ea59-4f2a-ae79-f06bd8ec3c63
+		summarizeBy: none
+
+		annotation SummarizationSetBy = Automatic
+
+	column categoria_frete =
+			IF(orders[freight_value] <= 25, "Baixo",
+			IF(orders[freight_value] >= 26 && orders[freight_value] <= 45, "Médio", "Alto"))
+		lineageTag: aab73825-6a12-4ba6-b9d4-053769547033
+		summarizeBy: none
+
+		annotation SummarizationSetBy = Automatic
+
+	column satisfacao =
+			IF('orders'[review_score] <= 2, "Insatisfeito",
+			IF('orders'[review_score] >= 4, "Satisfeito", "Neutro"))
+		lineageTag: 89291620-3217-4532-b30e-6fcdebdfcf9d
+		summarizeBy: none
+
+		annotation SummarizationSetBy = Automatic
+
+	partition orders = m
+		mode: import
+		source =
+				let
+				    Fonte = Csv.Document(File.Contents("C:\Users\isado\Documents\Estudos\Cursos Livres\DATA GIRLS\SEMANA 4\orders.csv"),[Delimiter=",", Columns=6, Encoding=1252, QuoteStyle=QuoteStyle.None]),
+				    #"Cabeçalhos Promovidos" = Table.PromoteHeaders(Fonte, [PromoteAllScalars=true]),
+				    #"Tipo Alterado" = Table.TransformColumnTypes(#"Cabeçalhos Promovidos",{{"order_id", Int64.Type}, {"status", type text}, {"purchase_date", type date}, {"delivered_date", type date}, {"freight_value", Int64.Type}, {"review_score", Int64.Type}})
+				in
+				    #"Tipo Alterado"
+
+	annotation PBI_ResultType = Table
+
